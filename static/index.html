@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>Idra – Chat Prototype</title>
+  <style>
+    body {
+
+    
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: transparent;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      overflow-y: auto;
+    }
+
+    #scene {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(#0b2c3a, #020b10);
+      overflow: hidden;
+      z-index: 0;
+    }
+
+    #scene::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(140% 90% at 15% 5%, rgba(255,255,255,0.28), transparent 55%),
+        radial-gradient(140% 90% at 85% 95%, rgba(255,255,255,0.20), transparent 60%),
+        linear-gradient(120deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
+      backdrop-filter: blur(18px) saturate(140%);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+      opacity: 1;
+      animation: glassDrift 16s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    #scene::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(34px 34px at 12% 92%, rgba(64, 224, 208, 0.85), rgba(64, 224, 208, 0) 70%),
+        radial-gradient(26px 26px at 32% 95%, rgba(64, 224, 208, 0.7), rgba(64, 224, 208, 0) 70%),
+        radial-gradient(38px 38px at 55% 98%, rgba(64, 224, 208, 0.85), rgba(64, 224, 208, 0) 70%),
+        radial-gradient(28px 28px at 75% 93%, rgba(64, 224, 208, 0.7), rgba(64, 224, 208, 0) 70%),
+        radial-gradient(32px 32px at 88% 96%, rgba(64, 224, 208, 0.85), rgba(64, 224, 208, 0) 70%);
+      animation: bubblesRise 12s linear infinite;
+      opacity: 1;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    #hydra {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center calc(50% + 30px);
+      opacity: 0.82;
+      /* filter: blur(6px) saturate(110%); */
+      transition: all 0.8s ease;
+      animation: float 12s ease-in-out infinite;
+      z-index: 2;
+    }
+
+    #app {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    body.prestart #scene {
+      background: #000;
+    }
+
+    body.prestart #scene::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(rgba(0,0,0,0.04), rgba(0,0,0,0.10)),
+        url("/static/img/IDRAAA.png") center center / contain no-repeat;
+      opacity: 1;
+      animation: none;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    body.prestart #scene::after {
+      opacity: 0;
+      animation: none;
+    }
+
+    body.prestart #hydra {
+      opacity: 0.18;
+      animation: none;
+      z-index: 0;
+    }
+
+    body.prestart:not(.cover-only) #scene::before {
+      opacity: 0.58;
+    }
+
+    body.prestart:not(.cover-only) #hydra {
+      opacity: 0.56;
+    }
+
+    body.prestart.cover-only .container > :not(.gameCard) {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    body.prestart.cover-only .gameTop,
+    body.prestart.cover-only .gameActions,
+    body.prestart.cover-only #screenNmIntro,
+    body.prestart.cover-only #screenResult {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    body.prestart.cover-only .gameCard {
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    body.prestart.cover-only .prestartCard {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .coverStartWrap {
+      position: fixed;
+      left: 50%;
+      bottom: 44px;
+      transform: translateX(-50%);
+      z-index: 5;
+    }
+
+    .coverStartBtn {
+      padding: 16px 30px;
+      border: none;
+      border-radius: 999px;
+      background: #7CFF3B;
+      color: #081102;
+      font-size: 1.08rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      box-shadow: 0 0 28px rgba(124, 255, 59, 0.38), 0 14px 40px rgba(0,0,0,0.28);
+      cursor: pointer;
+    }
+
+    body.prestart .gameCard {
+      background: transparent;
+      border-color: #e5e7eb;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.10);
+    }
+
+    body.prestart .gameBody {
+      background: rgba(255,255,255,0.06);
+      padding: 14px;
+    }
+
+    body.nm-t1 #hydra {
+      opacity: 0.62;
+      /* filter: blur(6px) saturate(90%); */
+      transform: scale(0.95);
+    }
+
+    body.nm-t2 #hydra {
+      opacity: 0.78;
+      /* filter: blur(3px) saturate(120%); */
+      transform: scale(1);
+    }
+
+    body.nm-t3 #hydra {
+      opacity: 0.9;
+      /* filter: blur(1px) saturate(180%); */
+      transform: scale(1.02);
+    }
+
+    @keyframes float {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+      100% { transform: translateY(0); }
+    }
+
+    @keyframes glassDrift {
+      0% { transform: translateY(0) translateX(0); opacity: 0.8; }
+      50% { transform: translateY(-8px) translateX(6px); opacity: 1; }
+      100% { transform: translateY(0) translateX(0); opacity: 0.85; }
+    }
+
+    @keyframes bubblesRise {
+      0% { transform: translateY(120px); }
+      100% { transform: translateY(-420px); }
+    }
+
+    .container {
+      margin-top: 40px;
+      background: transparent;
+      padding: 20px 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      width: 100%;
+      max-width: 680px;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 1.4rem;
+      color: whitesmoke;
+    }
+
+    .headerRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .headerIcon {
+      width: 36px;
+      height: 36px;
+      object-fit: contain;
+      flex: 0 0 auto;
+    }
+
+    .headerReset {
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(254, 202, 202, 0.72);
+      background: rgba(185, 28, 28, 0.88);
+      color: #fff5f5;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      box-shadow: 0 12px 28px rgba(127, 29, 29, 0.38), 0 0 0 1px rgba(248, 113, 113, 0.18);
+    }
+
+    .headerReset:disabled {
+      opacity: 0.65;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    #msg {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 0.95rem;
+    }
+
+    #sendBtn {
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.95rem;
+      background-color: #2563eb;
+      color: white;
+    }
+
+    #sendBtn:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    /* --- STATUS (badge + testo operativo) --- */
+    #status {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: #666;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 22px;
+    }
+
+    #statusBadge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #ddd;
+      background: #fff;
+      color: #111;
+      user-select: none;
+    }
+
+    #statusBadge.online {
+      color: #166534;
+      border-color: #86efac;
+      background: rgba(22, 101, 52, 0.12);
+    }
+
+    #statusBadge.offline {
+      color: #b91c1c;
+      border-color: #fca5a5;
+      background: rgba(185, 28, 28, 0.12);
+    }
+
+    .error { color: #b91c1c; }
+
+    /* =========================
+       GAME CARD (stile “arcade”)
+       ========================= */
+    .gameCard {
+      margin-top: 14px;
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+      background: transparent;
+      color: #e5e7eb;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.10);
+      overflow: visible;
+    }
+
+    body.cocreare-active .gameCard {
+      display: flex;
+      flex-direction: column;
+    }
+
+    body.cocreare-active .gameTop { order: 1; }
+    body.cocreare-active .gameActions { order: 2; }
+    body.cocreare-active .gameBody { order: 3; }
+
+    .prestartCard {
+      padding: 24px 22px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(4, 10, 18, 0.46);
+      box-shadow: 0 18px 48px rgba(0,0,0,0.34);
+      backdrop-filter: blur(1px);
+      -webkit-backdrop-filter: blur(1px);
+    }
+
+    .prestartEyebrow {
+      margin: 0 0 10px 0;
+      font-size: 0.78rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #7dd3fc;
+    }
+
+    .prestartTitle {
+      margin: 0;
+      font-size: 1.9rem;
+      line-height: 1.05;
+      color: #fff;
+      text-shadow: 0 2px 14px rgba(0,0,0,0.45);
+    }
+
+    .prestartLead {
+      margin: 14px 0 0 0;
+      font-size: 1.04rem;
+      line-height: 1.65;
+      color: rgba(255,255,255,0.98);
+      white-space: pre-wrap;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.42);
+    }
+
+    .gameTop {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .gameTitle {
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: 0.2px;
+      color: #ffffff;
+    }
+
+    .gameMeta {
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      opacity: 1;
+      white-space: nowrap;
+    }
+
+    .gameBody {
+      margin-top: 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.06);
+      padding: 14px;
+      line-height: 1.35;
+      overflow: visible;
+    }
+
+    #screenResult {
+      overflow: visible;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(7, 10, 20, 0.55);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .bigText {
+      font-size: 1.05rem;
+      color: #ffffff;
+      margin: 0;
+      white-space: pre-wrap;
+    }
+
+    #resultTitle {
+      font-size: 1.12rem;
+      font-weight: 500;
+      line-height: 1.5;
+      letter-spacing: 0.15px;
+      color: #f8fbff;
+      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.22);
+    }
+
+    .subText {
+      margin: 8px 0 0 0;
+      font-size: 0.9rem;
+      opacity: 0.9;
+      white-space: pre-wrap;
+    }
+
+    .mirrorCardWrap {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 12px;
+      background: rgba(7, 10, 20, 0.55);
+      border: 1px solid rgba(255,255,255,0.1);
+      width: min(100%, 350px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .mirrorCardWrap.generating {
+      border-color: rgba(96, 165, 250, 0.75);
+      box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35), 0 0 22px rgba(96, 165, 250, 0.25);
+      animation: mirrorPulse 1s ease-in-out infinite;
+    }
+
+    .mirrorCardImg {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      object-fit: contain;
+      border-radius: 10px;
+      display: block;
+      margin: 0 auto;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .mirrorMeta {
+      margin-top: 8px;
+      width: 100%;
+      font-size: 0.85rem;
+      opacity: 0.95;
+      white-space: pre-wrap;
+      text-align: left;
+    }
+
+    .mirrorStatusStrong {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      color: #93c5fd;
+    }
+
+    .mirrorStatusStrong::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #60a5fa;
+      box-shadow: 0 0 8px rgba(96, 165, 250, 0.8);
+      animation: dotPulse 900ms infinite ease-in-out;
+    }
+
+    .handoffWrap {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(7, 10, 20, 0.55);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .handoffPrompt {
+      margin-top: 8px;
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.9rem;
+    }
+
+    .copyRow {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    @keyframes mirrorPulse {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-1px); }
+      100% { transform: translateY(0); }
+    }
+
+    .gameActions {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .endTag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: rgba(185, 28, 28, 0.92);
+      color: #fff4f4;
+      border: 1px solid rgba(254, 202, 202, 0.28);
+      font-size: 0.92rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      box-shadow: 0 10px 24px rgba(127, 29, 29, 0.25);
+    }
+
+    .btnGhost, .btnPrimary {
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.22);
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    }
+
+    .btnGhost {
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+    }
+
+    #nextBtn {
+      background: #ff7a00;
+      color: #2c1200;
+      border-color: #ffb347;
+      box-shadow: 0 0 22px rgba(255, 122, 0, 0.42);
+      font-weight: 800;
+    }
+
+    .btnGhost.ready {
+      background: #7CFF3B;
+      color: #081102;
+      border-color: #7CFF3B;
+      box-shadow: 0 0 18px rgba(124, 255, 59, 0.42);
+      font-weight: 700;
+    }
+
+    .btnPrimary {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+    }
+
+    .btnWarning {
+      background: #facc15;
+      color: #2b1d00;
+      border: 1px solid rgba(161, 98, 7, 0.28);
+    }
+
+    .btnPrimary:disabled, .btnGhost:disabled, .btnWarning:disabled {
+      opacity: 0.65;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .hidden { display: none; }
+
+    /* micro-animazione card */
+    @keyframes popIn {
+      from { transform: translateY(6px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .gameCard { animation: popIn 160ms ease-out; }
+
+    /* chat */
+    #chat {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 8px;
+      background-color: #f3f4f6;
+      min-height: 140px;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    #chat.hidden,
+    .chatTitle.hidden {
+      display: none;
+    }
+
+    .chatTitle {
+      margin-top: 16px;
+      margin-bottom: 8px;
+      font-size: 0.92rem;
+      font-style: italic;
+      color: #cbd5e1;
+      opacity: 0.95;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      white-space: pre-wrap;
+    }
+
+    .user {
+      align-self: flex-end;
+      background-color: #2563eb;
+      color: white;
+    }
+
+    .idra {
+      align-self: flex-start;
+      background-color: white;
+      color: #111;
+      border: 1px solid #e5e7eb;
+    }
+
+    /* typing dots */
+    .typing-dots {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+      margin-left: 6px;
+    }
+
+    .typing-dots span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #9ca3af;
+      display: inline-block;
+      animation: dotPulse 900ms infinite ease-in-out;
+    }
+
+    .typing-dots span:nth-child(2) { animation-delay: 120ms; }
+    .typing-dots span:nth-child(3) { animation-delay: 240ms; }
+
+    @keyframes dotPulse {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-3px); opacity: 1; }
+    }
+
+    .neck {
+      fill: none;
+      stroke: url(#neckGrad);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.95;
+    }
+
+    .neck-outline {
+      fill: none;
+      stroke: rgba(70, 58, 120, 0.8);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .neck-highlight {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.5);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.45;
+    }
+
+    .head-shape {
+      fill: url(#headGrad);
+      stroke: rgba(70, 58, 120, 0.75);
+      stroke-width: 1.4;
+    }
+
+    .head-eye {
+      fill: rgba(80, 60, 120, 0.6);
+    }
+
+    .head-glint {
+      fill: rgba(255, 255, 255, 0.7);
+    }
+
+    .body-shape {
+      fill: url(#bodyGrad);
+      opacity: 0.85;
+    }
+
+    .sway {
+      transform-box: fill-box;
+      transform-origin: center bottom;
+      animation: sway 8s ease-in-out infinite;
+    }
+
+    .sway.sway-2 { animation-duration: 9.5s; }
+    .sway.sway-3 { animation-duration: 7.5s; }
+    .sway.sway-4 { animation-duration: 10.5s; }
+    .sway.sway-5 { animation-duration: 8.8s; }
+
+    @keyframes sway {
+      0% { transform: rotate(-1.2deg); }
+      50% { transform: rotate(1.6deg); }
+      100% { transform: rotate(-1.2deg); }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="scene">
+    <video id="hydra" autoplay muted loop playsinline>
+      <source src="/static/video/BIGhydra.mp4" type="video/mp4">
+      <source src="/static/video/4teste.mp4" type="video/mp4">
+    </video>
+  </div>
+  <div id="app">
+   <div id="coverStartWrap" class="coverStartWrap">
+     <button id="coverStartBtn" class="coverStartBtn">Start</button>
+   </div>
+
+   <div class="container">
+     <div class="headerRow">
+       <h1>Idra – Chat prototipale</h1>
+       <button class="headerReset" id="headerResetBtn">Reset</button>
+     </div>
+
+     <label for="msg" id="msgLabel">Scrivi un messaggio da inviare a Idra:</label>
+     <div class="row" id="inputRow">
+       <input type="text" id="msg" placeholder="Inizia a scrivere..." autocomplete="off">
+       <button id="sendBtn">Invia</button>
+     </div>
+
+     <div id="status">
+       <span id="statusBadge">Stato: …</span>
+       <span id="statusText"></span>
+     </div>
+
+     <div class="row hidden" id="chatToggleRow">
+       <button class="btnWarning" id="chatToggleBtn">Storico della chat</button>
+     </div>
+
+    <!-- =========================
+         GAME CARD: Intro/Scenario/Esito
+         ========================= -->
+     <section class="gameCard" aria-label="Gioco">
+       <div class="gameTop">
+         <h2 class="gameTitle" id="gameHeader">IDRA GAME</h2>
+         <div class="gameMeta" id="gameMeta"><span id="levelNum">—</span></div>
+       </div>
+
+       <div class="gameBody">
+         <!-- Intro -->
+         <div id="screenIntro">
+           <div id="screenPreStart" class="prestartCard">
+             <p class="prestartEyebrow">Rituale di ingresso</p>
+             <h3 class="prestartTitle">IDRA</h3>
+             <p class="prestartLead">Nella mitologia, l'Idra era una creatura che, quando perdeva una testa, ne faceva crescere altre. Ogni ferita diventava trasformazione.
+
+Qui l'errore non &egrave; visto come qualcosa da cancellare, ma come qualcosa che pu&ograve; insegnare, cambiare forma e renderti pi&ugrave; forte. In questo senso, l'errore pu&ograve; diventare antifragile: non solo resiste, ma si trasforma e apprende dal passaggio.
+
+Questo prototipo &egrave; pensato per un uso guidato da un esperto. L'AI accompagna l'esplorazione, ma non sostituisce il giudizio umano n&eacute; rappresenta un supporto clinico o educativo.</p>
+           </div>
+           <div id="screenNmIntro" class="hidden">
+             <p class="bigText">Ti trovi nella Città Perfetta, dove nulla sbaglia mai. Un giorno, però, qualcosa si incrina. Un piccolo errore si fa strada. Ti guardi allo specchio e lo vedi riflesso nel tuo volto. Che tipo di errore sei tu oggi?</p>
+             <p class="subText">Questo prototipo &egrave; pensato per un uso guidato da un esperto. L'AI accompagna l'esplorazione, ma non sostituisce il giudizio umano n&eacute; rappresenta un supporto clinico o educativo.</p>
+           </div>
+         </div>
+
+
+        <!-- Esito -->
+         <div id="screenResult" class="hidden">
+           <p class="bigText" id="resultTitle">Esito</p>
+           <p class="subText hidden" id="resultText">…</p>
+           <div id="handoffWrap" class="handoffWrap hidden">
+             <p class="bigText">Prompt pronto</p>
+             <p class="subText">Copialo e incollalo direttamente in un'altra AI. Inoltre, ricorda di specificare la tua et&agrave; all'AI, in modo che le risposte siano pi&ugrave; chiare per te.</p>
+             <div id="handoffPrompt" class="handoffPrompt"></div>
+             <div class="copyRow">
+               <button class="btnPrimary" id="copyPromptBtn">Copia prompt</button>
+             </div>
+           </div>
+           <div id="mirrorCardWrap" class="mirrorCardWrap hidden">
+             <img id="mirrorCardImg" class="mirrorCardImg hidden" alt="Mirror Card">
+             <p id="mirrorCardStatus" class="subText">Generazione card in corso...</p>
+             <p id="mirrorCardMeta" class="mirrorMeta"></p>
+           </div>
+         </div>
+       </div>
+
+       <div class="gameActions">
+         <button class="btnPrimary" id="startGameBtn">Start</button>
+         <button class="btnGhost" id="nextBtn" disabled>Next</button>
+         <span id="endTag" class="endTag hidden">Fine del gioco</span>
+         <button class="btnPrimary hidden" id="next2Btn" disabled>Confermo</button>
+         <button class="btnGhost hidden" id="titleHelpBtn">Creiamolo insieme</button>
+         <button class="btnGhost hidden" id="choice1Btn">1. Ritoccarla finch&eacute; scompare.</button>
+         <button class="btnGhost hidden" id="choice2Btn">2. Lasciarla cos&igrave;, come una ferita viva.</button>
+         <button class="btnGhost hidden" id="choice3Btn">3. Rompere la statua per scoprire cosa c'&egrave; dentro.</button>
+       </div>
+       <p id="nextHint" class="subText hidden">Se vuoi passare oltre, premi il tasto verde.</p>
+     </section>
+
+     <p id="chatTitle" class="chatTitle">Storico della chat</p>
+     <div id="chat">
+
+     </div>
+   </div>
+ </div>
+<script>
+  const input = document.getElementById("msg");
+  const btn = document.getElementById("sendBtn");
+  const chatBox = document.getElementById("chat");
+  const chatTitle = document.getElementById("chatTitle");
+  const chatToggleRow = document.getElementById("chatToggleRow");
+  const chatToggleBtn = document.getElementById("chatToggleBtn");
+  const coverStartWrap = document.getElementById("coverStartWrap");
+  const coverStartBtn = document.getElementById("coverStartBtn");
+
+  const statusBadge = document.getElementById("statusBadge");
+  const statusText = document.getElementById("statusText");
+
+  // Game card elements
+  const startGameBtn = document.getElementById("startGameBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const endTag = document.getElementById("endTag");
+  const next2Btn = document.getElementById("next2Btn");
+  const titleHelpBtn = document.getElementById("titleHelpBtn");
+  const choice1Btn = document.getElementById("choice1Btn");
+  const choice2Btn = document.getElementById("choice2Btn");
+  const choice3Btn = document.getElementById("choice3Btn");
+  const resetBtn = document.getElementById("headerResetBtn");
+  const levelNum = document.getElementById("levelNum");
+
+  const screenIntro = document.getElementById("screenIntro");
+  const screenResult = document.getElementById("screenResult");
+  const screenPreStart = document.getElementById("screenPreStart");
+  const screenNmIntro = document.getElementById("screenNmIntro");
+  const msgLabel = document.getElementById("msgLabel");
+  const inputRow = document.getElementById("inputRow");
+
+  const resultTitle = document.getElementById("resultTitle");
+  const resultText = document.getElementById("resultText");
+  const gameHeader = document.getElementById("gameHeader");
+  const mirrorCardWrap = document.getElementById("mirrorCardWrap");
+  const mirrorCardImg = document.getElementById("mirrorCardImg");
+  const mirrorCardStatus = document.getElementById("mirrorCardStatus");
+  const mirrorCardMeta = document.getElementById("mirrorCardMeta");
+  const handoffWrap = document.getElementById("handoffWrap");
+  const handoffPrompt = document.getElementById("handoffPrompt");
+  const copyPromptBtn = document.getElementById("copyPromptBtn");
+  const nextHint = document.getElementById("nextHint");
+
+
+  let gameStarted = false;
+  let isSending = false;
+  let currentMode = "NM";
+  let nmTurn = "T1";
+  let nmHasReplyForTurn = false;
+  let iiAssistantCount = 0;
+  let vivereTurn = "V1";
+  let cocreareTurn = "C1";
+  let hydraMode = "";
+  let allowT3Input = false;
+  let lastMirrorPromptRendered = "";
+  let mirrorReqCounter = 0;
+  let mirrorCardGenerating = false;
+  let coverOnly = true;
+  let chatVisible = false;
+
+  // ---------- UI helpers ----------
+  function showScreen(which) {
+    screenIntro.classList.toggle("hidden", which !== "intro");
+    screenResult.classList.toggle("hidden", which !== "result");
+  }
+
+  function updatePreStartUI() {
+    document.body.classList.toggle("prestart", !gameStarted);
+    document.body.classList.toggle("cover-only", !gameStarted && coverOnly);
+    screenPreStart.classList.toggle("hidden", gameStarted);
+    screenNmIntro.classList.toggle("hidden", !gameStarted);
+    msgLabel.classList.toggle("hidden", !gameStarted);
+    inputRow.classList.toggle("hidden", !gameStarted);
+    statusBadge.parentElement.classList.toggle("hidden", !gameStarted);
+    chatToggleRow.classList.toggle("hidden", !gameStarted);
+    chatTitle.classList.toggle("hidden", !gameStarted || !chatVisible);
+    chatBox.classList.toggle("hidden", !gameStarted || !chatVisible);
+    startGameBtn.classList.toggle("hidden", gameStarted);
+    coverStartWrap.classList.toggle("hidden", gameStarted || !coverOnly);
+  }
+
+  function addMessage(text, type) {
+    const div = document.createElement("div");
+    div.classList.add("message", type);
+    div.textContent = text;
+    chatBox.prepend(div);
+    chatBox.scrollTop = 0;
+  }
+
+  function addTypingBubble() {
+    const div = document.createElement("div");
+    div.className = "message idra";
+    div.dataset.typing = "true";
+
+    const label = document.createElement("span");
+    label.textContent = "Idra sta pensando";
+
+    const dots = document.createElement("span");
+    dots.className = "typing-dots";
+    dots.innerHTML = "<span></span><span></span><span></span>";
+
+    div.appendChild(label);
+    div.appendChild(dots);
+
+    chatBox.prepend(div);
+    chatBox.scrollTop = 0;
+    return div;
+  }
+
+  function replaceTypingBubble(bubble, text) {
+    if (!bubble) return;
+    bubble.textContent = text;
+    delete bubble.dataset.typing;
+  }
+
+  function setSending(sending, statusMsg = "") {
+    isSending = sending;
+    statusText.textContent = statusMsg;
+    updateNextButton();
+    if (!sending) input.focus();
+  }
+
+  function updateInputLock() {
+    let disabled = isSending || !gameStarted || mirrorCardGenerating;
+    if (currentMode === "NM") {
+      const lockForT2 = nmTurn === "T2" && nmHasReplyForTurn;
+      const lockForT3 = nmTurn === "T3" && nmHasReplyForTurn && !allowT3Input;
+      disabled = disabled || lockForT2 || lockForT3;
+    } else if (currentMode === "VIVERE") {
+      disabled = disabled || vivereTurn === "DONE";
+    } else if (currentMode === "COCREARE") {
+      disabled = disabled || cocreareTurn === "C1" || cocreareTurn === "DONE";
+    }
+    btn.disabled = disabled;
+    input.disabled = disabled;
+  }
+
+  function updateNextButton() {
+    startGameBtn.disabled = gameStarted || isSending || mirrorCardGenerating;
+    resetBtn.disabled = isSending || mirrorCardGenerating;
+    nextBtn.classList.remove("ready");
+    nextHint.classList.add("hidden");
+    endTag.classList.add("hidden");
+    if (currentMode === "VIVERE") {
+      const showNextToCocreare = vivereTurn === "DONE";
+      nextBtn.classList.toggle("hidden", !showNextToCocreare);
+      nextBtn.textContent = "Next";
+      nextBtn.disabled = isSending || mirrorCardGenerating || !showNextToCocreare;
+      next2Btn.classList.add("hidden");
+      choice1Btn.classList.add("hidden");
+      choice2Btn.classList.add("hidden");
+      choice3Btn.classList.add("hidden");
+      titleHelpBtn.classList.toggle("hidden", vivereTurn !== "V3");
+      updateVivereButtons();
+      updateInputLock();
+      return;
+    }
+    if (currentMode === "COCREARE") {
+      nextBtn.classList.add("hidden");
+      next2Btn.classList.add("hidden");
+      endTag.classList.toggle("hidden", cocreareTurn !== "DONE");
+      updateCocreareButtons();
+      updateInputLock();
+      return;
+    }
+    choice1Btn.classList.add("hidden");
+    choice2Btn.classList.add("hidden");
+    choice3Btn.classList.add("hidden");
+    titleHelpBtn.classList.add("hidden");
+    if (nmTurn === "T1") {
+      nextBtn.classList.add("hidden");
+      next2Btn.classList.add("hidden");
+      next2Btn.disabled = true;
+      updateInputLock();
+      return;
+    }
+    nextBtn.classList.remove("hidden");
+    next2Btn.classList.remove("hidden");
+    nextBtn.classList.remove("ready");
+    if (nmTurn === "T2") {
+      nextBtn.textContent = "Rigenera";
+      nextBtn.disabled = isSending;
+      next2Btn.textContent = "Si";
+      next2Btn.classList.toggle("hidden", !nmHasReplyForTurn);
+      next2Btn.disabled = isSending || !nmHasReplyForTurn;
+      updateInputLock();
+      return;
+    }
+    if (nmTurn === "T3") {
+      nextBtn.textContent = "Rigenera";
+      nextBtn.disabled = isSending;
+      next2Btn.textContent = "Confermo";
+      next2Btn.classList.toggle("hidden", !nmHasReplyForTurn);
+      next2Btn.disabled = isSending || !nmHasReplyForTurn;
+      updateInputLock();
+      return;
+    }
+    nextBtn.textContent = "Next";
+    nextBtn.disabled = isSending;
+    next2Btn.classList.add("hidden");
+    next2Btn.disabled = true;
+    updateInputLock();
+  }
+
+  function updateVivereButtons() {
+    const showChoices = currentMode === "VIVERE" && (vivereTurn === "V1" || vivereTurn === "V2");
+    const showTitleHelp = currentMode === "VIVERE" && vivereTurn === "V3";
+    choice1Btn.classList.toggle("hidden", !showChoices);
+    choice2Btn.classList.toggle("hidden", !showChoices);
+    choice3Btn.classList.toggle("hidden", !showChoices);
+    titleHelpBtn.classList.toggle("hidden", !showTitleHelp);
+    choice1Btn.disabled = isSending || mirrorCardGenerating || !showChoices;
+    choice2Btn.disabled = isSending || mirrorCardGenerating || !showChoices;
+    choice3Btn.disabled = isSending || mirrorCardGenerating || !showChoices;
+    titleHelpBtn.disabled = isSending || mirrorCardGenerating || !showTitleHelp;
+  }
+
+  function updateCocreareState(c) {
+    if (!c) return;
+    if (c.turn) {
+      cocreareTurn = c.turn;
+    }
+  }
+
+  function updateCocreareButtons() {
+    const showChoices = currentMode === "COCREARE" && cocreareTurn === "C1";
+    choice1Btn.textContent = "1. Capire il problema";
+    choice2Btn.textContent = "2. Cambiare prospettiva";
+    choice3Btn.textContent = "3. Trovare un uso utile";
+    choice1Btn.classList.toggle("hidden", !showChoices);
+    choice2Btn.classList.toggle("hidden", !showChoices);
+    choice3Btn.classList.toggle("hidden", !showChoices);
+    titleHelpBtn.classList.add("hidden");
+    choice1Btn.disabled = isSending || mirrorCardGenerating || !showChoices;
+    choice2Btn.disabled = isSending || mirrorCardGenerating || !showChoices;
+    choice3Btn.disabled = isSending || mirrorCardGenerating || !showChoices;
+  }
+
+  function updateNmState(nm) {
+    if (!nm) return;
+    const prevTurn = nmTurn;
+    nmTurn = nm.turn || nmTurn;
+    if (nmTurn !== prevTurn) {
+      nmHasReplyForTurn = false;
+      allowT3Input = false;
+    }
+    if (typeof nm.ii_count_t1 === "number") {
+      iiAssistantCount = nm.ii_count_t1;
+    }
+  }
+
+  function updateVivereState(v) {
+    if (!v) return;
+    if (v.turn) {
+      vivereTurn = v.turn;
+    }
+    if (Array.isArray(v.choices) && v.choices.length === 3) {
+      choice1Btn.textContent = `1. ${v.choices[0]}`;
+      choice2Btn.textContent = `2. ${v.choices[1]}`;
+      choice3Btn.textContent = `3. ${v.choices[2]}`;
+    }
+  }
+
+  function updateModeUI() {
+    document.body.classList.remove("nm-t1", "nm-t2", "nm-t3", "vivere", "cocreare-active");
+    if (currentMode === "NM") {
+      document.body.classList.add(`nm-${nmTurn.toLowerCase()}`);
+      gameHeader.textContent = "DARE UN NOME";
+      levelNum.textContent = `Dare un nome ${nmTurn}`;
+      setHydraVideo("NM");
+    } else if (currentMode === "VIVERE") {
+      document.body.classList.add("vivere");
+      gameHeader.textContent = "VIVERE";
+      levelNum.textContent = `Vivere ${vivereTurn}`;
+      setHydraVideo("VIVERE");
+    } else if (currentMode === "COCREARE") {
+      document.body.classList.add("vivere", "cocreare-active");
+      gameHeader.textContent = "CO-CREARE";
+      levelNum.textContent = `CO-CREARE ${cocreareTurn}`;
+      setHydraVideo("COCREARE");
+    }
+    updatePreStartUI();
+    updateNextButton();
+  }
+
+  function updateScenarioState(data) {
+    if (data && data.mode) {
+      currentMode = data.mode;
+    }
+    updateNmState(data?.nm);
+    updateVivereState(data?.vivere);
+    updateCocreareState(data?.cocreare);
+    updateModeUI();
+    maybeRenderMirrorCard(data?.vivere);
+    maybeRenderHandoffPrompt(data?.cocreare);
+  }
+
+  function setHydraVideo(mode) {
+    if (hydraMode === mode) return;
+    const hydra = document.getElementById("hydra");
+    if (!hydra) return;
+    const src = mode === "VIVERE"
+      ? "/static/video/4teste.mp4"
+      : mode === "COCREARE"
+      ? "/static/video/5teste.mp4"
+      : "/static/video/BIGhydra.mp4";
+    hydra.pause();
+    hydra.setAttribute("src", src);
+    const source = hydra.querySelector("source");
+    if (source) source.src = src;
+    hydraMode = mode;
+    hydra.load();
+    hydra.play().catch(() => {});
+  }
+
+  function markNmReplyIfNeeded() {
+    if (nmTurn === "T2" || nmTurn === "T3") {
+      nmHasReplyForTurn = true;
+      updateNextButton();
+    }
+  }
+
+  function setGameResult(title, text, canGoNext) {
+    resultTitle.textContent = text;
+    resultText.textContent = "";
+    showScreen("result");
+    updateNextButton();
+  }
+
+  function resetMirrorCardUI() {
+    if (!mirrorCardWrap) return;
+    mirrorCardWrap.classList.add("hidden");
+    mirrorCardImg.classList.add("hidden");
+    mirrorCardImg.removeAttribute("src");
+    mirrorCardStatus.textContent = "Generazione card in corso...";
+    mirrorCardStatus.classList.remove("mirrorStatusStrong");
+    mirrorCardWrap.classList.remove("generating");
+    mirrorCardMeta.textContent = "";
+    lastMirrorPromptRendered = "";
+    mirrorCardGenerating = false;
+    handoffWrap.classList.add("hidden");
+    handoffPrompt.textContent = "";
+    copyPromptBtn.textContent = "Copia prompt";
+  }
+
+  function maybeRenderHandoffPrompt(cocreare) {
+    if (!handoffWrap || !cocreare) return;
+    const prompt = (cocreare.handoff_prompt || "").trim();
+    if (!prompt || cocreare.turn !== "DONE") {
+      handoffWrap.classList.add("hidden");
+      handoffPrompt.textContent = "";
+      copyPromptBtn.textContent = "Copia prompt";
+      return;
+    }
+    handoffPrompt.textContent = prompt;
+    handoffWrap.classList.remove("hidden");
+  }
+
+  function maybeRenderMirrorCard(vivere) {
+    if (!mirrorCardWrap || !vivere) return;
+    const prompt = (vivere.card_image_prompt || "").trim();
+    if (!prompt) return;
+    if (prompt === lastMirrorPromptRendered) return;
+
+    lastMirrorPromptRendered = prompt;
+    mirrorReqCounter += 1;
+    const reqId = mirrorReqCounter;
+
+    mirrorCardWrap.classList.remove("hidden");
+    mirrorCardWrap.classList.add("generating");
+    mirrorCardImg.classList.add("hidden");
+    mirrorCardStatus.textContent = "Sto generando la Mirror Card, attendi...";
+    mirrorCardStatus.classList.add("mirrorStatusStrong");
+    mirrorCardMeta.textContent = [
+      vivere.title ? `Titolo: ${vivere.title}` : "",
+      vivere.epithet ? `Archetipo: ${vivere.epithet}` : "",
+      vivere.mantra ? `Mantra: ${vivere.mantra}` : ""
+    ].filter(Boolean).join("\n");
+    mirrorCardGenerating = true;
+    updateNextButton();
+
+    apiMirrorCardImage(prompt)
+      .then((imageUrl) => {
+        if (reqId !== mirrorReqCounter) return;
+        if (!imageUrl) throw new Error("Immagine vuota.");
+        mirrorCardImg.src = imageUrl;
+        mirrorCardImg.classList.remove("hidden");
+        mirrorCardStatus.textContent = "Mirror Card pronta.";
+        mirrorCardStatus.classList.remove("mirrorStatusStrong");
+        mirrorCardWrap.classList.remove("generating");
+        mirrorCardGenerating = false;
+        updateNextButton();
+      })
+      .catch((err) => {
+        if (reqId !== mirrorReqCounter) return;
+        mirrorCardStatus.textContent = err.message || "Generazione non disponibile.";
+        mirrorCardStatus.classList.remove("mirrorStatusStrong");
+        mirrorCardWrap.classList.remove("generating");
+        mirrorCardGenerating = false;
+        updateNextButton();
+      });
+  }
+
+  // ---------- API ----------
+  async function apiII(message, action = "") {
+    const res = await fetch("/api/ii", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, action })
+    });
+
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {
+      // se il server risponde non-JSON
+      data = {};
+    }
+
+    if (!res.ok) {
+      const errText = data.error || `Errore dal server (HTTP ${res.status}).`;
+      throw new Error(errText);
+    }
+
+    return data; // { reply, provider, ok, error, debug }
+  }
+
+  async function apiMirrorCardImage(prompt) {
+    const res = await fetch("/api/mirror-card-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || "Errore generazione immagine.");
+    }
+    return data.image_url || "";
+  }
+
+  // ---------- Game ----------
+  function resetGameUI() {
+    gameStarted = false;
+    iiAssistantCount = 0;
+    nmTurn = "T1";
+    nmHasReplyForTurn = false;
+    allowT3Input = false;
+    currentMode = "NM";
+    vivereTurn = "V1";
+    cocreareTurn = "C1";
+    hydraMode = "";
+    levelNum.textContent = "—";
+    showScreen("intro");
+    nextBtn.disabled = true;
+    next2Btn.classList.add("hidden");
+    next2Btn.disabled = true;
+    titleHelpBtn.classList.add("hidden");
+    titleHelpBtn.disabled = true;
+    choice1Btn.classList.add("hidden");
+    choice2Btn.classList.add("hidden");
+    choice3Btn.classList.add("hidden");
+    chatVisible = false;
+    chatToggleBtn.textContent = "Storico della chat";
+    chatBox.innerHTML = "";
+    resetMirrorCardUI();
+    input.disabled = true;
+    btn.disabled = true;
+    coverOnly = true;
+    updateModeUI();
+  }
+
+  // ---------- Chat ----------
+  async function sendMessage() {
+    if (isSending || mirrorCardGenerating) return;
+
+    const message = input.value.trim();
+    if (!message) {
+      statusText.innerHTML = '<span class="error">Scrivi prima un messaggio.</span>';
+      return;
+    }
+
+    addMessage(message, "user");
+    input.value = "";
+    if (currentMode === "NM" && nmTurn === "T3") {
+      allowT3Input = false;
+    }
+
+    const typingBubble = addTypingBubble();
+    setSending(true, "Invio in corso...");
+
+    if (gameStarted) {
+      setGameResult("Valutazione...", "Idra sta elaborando l'esito della tua azione.", false);
+    }
+
+    try {
+      const data = await apiII(message);
+      const reply = data.reply || "Nessuna risposta.";
+      updateScenarioState(data);
+      if (currentMode === "NM") {
+        markNmReplyIfNeeded();
+      }
+      console.debug("nm.ii_count_t1:", data?.nm?.ii_count_t1);
+
+      replaceTypingBubble(typingBubble, reply);
+
+      if (gameStarted) {
+        setGameResult("Esito", reply, true);
+      }
+
+      console.debug("provider:", data.provider, "ok:", data.ok, "error:", data.error, "debug:", data.debug);
+    } catch (err) {
+      const msg = err.message || "Impossibile contattare il server.";
+      replaceTypingBubble(typingBubble, msg);
+
+      if (gameStarted) {
+        setGameResult("Offline/Errore", msg, false);
+      }
+    } finally {
+      setSending(false, "");
+    }
+  }
+
+  // ---------- Status ping ----------
+  async function updateStatus() {
+    try {
+      const res = await fetch("/api/ping", { cache: "no-store" });
+      if (!res.ok) throw new Error("Ping failed");
+      statusBadge.textContent = "Stato: Online";
+      statusBadge.classList.remove("offline");
+      statusBadge.classList.add("online");
+    } catch {
+      statusBadge.textContent = "Stato: Offline";
+      statusBadge.classList.remove("online");
+      statusBadge.classList.add("offline");
+    }
+  }
+  updateStatus();
+  setInterval(updateStatus, 5000);
+
+  // ---------- Event listeners ----------
+  btn.addEventListener("click", sendMessage);
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  coverStartBtn.addEventListener("click", () => {
+    coverOnly = false;
+    updatePreStartUI();
+  });
+
+  startGameBtn.addEventListener("click", () => {
+    if (gameStarted) return;
+    gameStarted = true;
+    iiAssistantCount = 0;
+    nmTurn = "T1";
+    nmHasReplyForTurn = false;
+    allowT3Input = false;
+    currentMode = "NM";
+    vivereTurn = "V1";
+    cocreareTurn = "C1";
+    resetMirrorCardUI();
+    showScreen("intro");
+    input.disabled = false;
+    btn.disabled = false;
+    input.focus();
+    updateModeUI();
+  });
+
+  nextBtn.addEventListener("click", () => {
+    if (isSending || mirrorCardGenerating) return;
+
+    if (currentMode === "VIVERE" && vivereTurn === "DONE") {
+      const typingBubble = addTypingBubble();
+      setSending(true, "Invio in corso...");
+
+      apiII("", "vivere_to_cocreare")
+        .then((data) => {
+          const reply = data.reply || "Nessuna risposta.";
+          updateScenarioState(data);
+          replaceTypingBubble(typingBubble, reply);
+          if (gameStarted) {
+            setGameResult("Esito", reply, true);
+          }
+        })
+        .catch((err) => {
+          const msg = err.message || "Impossibile contattare il server.";
+          replaceTypingBubble(typingBubble, msg);
+          if (gameStarted) {
+            setGameResult("Offline/Errore", msg, false);
+          }
+        })
+        .finally(() => {
+          setSending(false, "");
+          updateNextButton();
+        });
+      return;
+    }
+
+    if (nmTurn === "T1" && iiAssistantCount >= 3) {
+      const typingBubble = addTypingBubble();
+      setSending(true, "Invio in corso...");
+
+      apiII("", "nm_proceed_t2")
+        .then((data) => {
+          const reply = data.reply || "Nessuna risposta.";
+          updateScenarioState(data);
+          if (currentMode === "NM") {
+            markNmReplyIfNeeded();
+          }
+          replaceTypingBubble(typingBubble, reply);
+          if (gameStarted) {
+            setGameResult("Esito", reply, true);
+          }
+        })
+        .catch((err) => {
+          const msg = err.message || "Impossibile contattare il server.";
+          replaceTypingBubble(typingBubble, msg);
+          if (gameStarted) {
+            setGameResult("Offline/Errore", msg, false);
+          }
+        })
+        .finally(() => {
+          setSending(false, "");
+          updateNextButton();
+        });
+      return;
+    }
+
+    if (nmTurn === "T2") {
+      const typingBubble = addTypingBubble();
+      setSending(true, "Invio in corso...");
+
+      apiII("", "nm_modify_description")
+        .then((data) => {
+          const reply = data.reply || "Nessuna risposta.";
+          updateScenarioState(data);
+          if (currentMode === "NM") {
+            markNmReplyIfNeeded();
+          }
+          replaceTypingBubble(typingBubble, reply);
+          if (gameStarted) {
+            setGameResult("Esito", reply, true);
+          }
+        })
+        .catch((err) => {
+          const msg = err.message || "Impossibile contattare il server.";
+          replaceTypingBubble(typingBubble, msg);
+          if (gameStarted) {
+            setGameResult("Offline/Errore", msg, false);
+          }
+        })
+        .finally(() => {
+          setSending(false, "");
+          updateNextButton();
+        });
+      return;
+    }
+
+    if (nmTurn === "T3") {
+      const typingBubble = addTypingBubble();
+      setSending(true, "Invio in corso...");
+
+      apiII("", "nm_regen_name")
+        .then((data) => {
+          const reply = data.reply || "Nessuna risposta.";
+          updateScenarioState(data);
+          if (currentMode === "NM") {
+            markNmReplyIfNeeded();
+          }
+          if (currentMode === "NM" && nmTurn === "T3") {
+            allowT3Input = true;
+          }
+          replaceTypingBubble(typingBubble, reply);
+          if (gameStarted) {
+            setGameResult("Esito", reply, true);
+          }
+        })
+        .catch((err) => {
+          const msg = err.message || "Impossibile contattare il server.";
+          replaceTypingBubble(typingBubble, msg);
+          if (gameStarted) {
+            setGameResult("Offline/Errore", msg, false);
+          }
+        })
+        .finally(() => {
+          setSending(false, "");
+          updateNextButton();
+        });
+      return;
+    }
+
+    if (!gameStarted) return;
+
+  });
+
+  next2Btn.addEventListener("click", () => {
+    if (isSending || mirrorCardGenerating) return;
+
+    if (nmTurn === "T2") {
+      const typingBubble = addTypingBubble();
+      setSending(true, "Invio in corso...");
+
+      apiII("", "nm_confirm_description")
+        .then((data) => {
+          const reply = data.reply || "Nessuna risposta.";
+          updateScenarioState(data);
+          if (currentMode === "NM") {
+            markNmReplyIfNeeded();
+          }
+          replaceTypingBubble(typingBubble, reply);
+          if (gameStarted) {
+            setGameResult("Esito", reply, true);
+          }
+        })
+        .catch((err) => {
+          const msg = err.message || "Impossibile contattare il server.";
+          replaceTypingBubble(typingBubble, msg);
+          if (gameStarted) {
+            setGameResult("Offline/Errore", msg, false);
+          }
+        })
+        .finally(() => {
+          setSending(false, "");
+          updateNextButton();
+        });
+      return;
+    }
+
+    if (nmTurn === "T3") {
+      const typingBubble = addTypingBubble();
+      setSending(true, "Invio in corso...");
+
+      apiII("", "nm_confirm_name")
+        .then((data) => {
+          const reply = data.reply || "Nessuna risposta.";
+          updateScenarioState(data);
+          if (currentMode === "NM") {
+            markNmReplyIfNeeded();
+          }
+          replaceTypingBubble(typingBubble, reply);
+          if (gameStarted) {
+            setGameResult("Esito", reply, true);
+          }
+        })
+        .catch((err) => {
+          const msg = err.message || "Impossibile contattare il server.";
+          replaceTypingBubble(typingBubble, msg);
+          if (gameStarted) {
+            setGameResult("Offline/Errore", msg, false);
+          }
+        })
+        .finally(() => {
+          setSending(false, "");
+          updateNextButton();
+        });
+    }
+  });
+
+  function sendVivereAction(action, userLabel = "") {
+    if (isSending || mirrorCardGenerating) return;
+    if (userLabel) addMessage(userLabel, "user");
+    const typingBubble = addTypingBubble();
+    setSending(true, "Invio in corso...");
+
+    apiII("", action)
+      .then((data) => {
+        const reply = data.reply || "Nessuna risposta.";
+        updateScenarioState(data);
+        if (currentMode === "NM") {
+          markNmReplyIfNeeded();
+        }
+        replaceTypingBubble(typingBubble, reply);
+        if (gameStarted) {
+          setGameResult("Esito", reply, true);
+        }
+      })
+      .catch((err) => {
+        const msg = err.message || "Impossibile contattare il server.";
+        replaceTypingBubble(typingBubble, msg);
+        if (gameStarted) {
+          setGameResult("Offline/Errore", msg, false);
+        }
+      })
+      .finally(() => {
+        setSending(false, "");
+        updateNextButton();
+      });
+  }
+
+  function sendChoiceAction(choiceNum) {
+    const btnMap = { "1": choice1Btn, "2": choice2Btn, "3": choice3Btn };
+    const selectedLabel = (btnMap[choiceNum]?.textContent || "").trim();
+    if (currentMode === "COCREARE") {
+      sendVivereAction(`cocreare_choice_${choiceNum}`, selectedLabel);
+      return;
+    }
+    sendVivereAction(`vivere_choice_${choiceNum}`, selectedLabel);
+  }
+
+  choice1Btn.addEventListener("click", () => sendChoiceAction("1"));
+  choice2Btn.addEventListener("click", () => sendChoiceAction("2"));
+  choice3Btn.addEventListener("click", () => sendChoiceAction("3"));
+  titleHelpBtn.addEventListener("click", () => sendVivereAction("vivere_title_help", titleHelpBtn.textContent.trim()));
+  chatToggleBtn.addEventListener("click", () => {
+    chatVisible = !chatVisible;
+    chatToggleBtn.textContent = chatVisible ? "Nascondi storico" : "Storico della chat";
+    updatePreStartUI();
+  });
+  copyPromptBtn.addEventListener("click", async () => {
+    const text = handoffPrompt.textContent.trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      copyPromptBtn.textContent = "Copiato";
+    } catch {
+      copyPromptBtn.textContent = "Copia non riuscita";
+    }
+  });
+
+  resetBtn.addEventListener("click", () => {
+    setSending(true, "Reset in corso...");
+    apiII("", "nm_reset")
+      .catch(() => {})
+      .finally(() => {
+        resetGameUI();
+        setSending(false, "");
+        input.focus();
+      });
+  });
+
+  // Stato iniziale
+  resetGameUI();
+</script>
+
+  
+</body>
+</html>
